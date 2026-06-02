@@ -1,0 +1,178 @@
+edge/data/dataset.h:5:#include "temperature_data.h"
+edge/data/dataset.h:6:#include "humidity_data.h"
+edge/data/dataset.h:13:    TemperatureData *temp;
+edge/data/dataset.h:14:    HumidityData *humid;
+edge/data/dataset.h:21:    int getNumHouseData();
+edge/data/dataset.h:23:    HouseData *getHouseData(int index);
+edge/data/dataset.h:25:    HouseData *getNextHouseData();
+edge/data/dataset.h:27:    void setTemperatureData(TemperatureData *temp);
+edge/data/dataset.h:28:    TemperatureData *getTemperatureData();
+edge/data/dataset.h:30:    void setHumidityData(HumidityData *humid);
+edge/data/dataset.h:31:    HumidityData *getHumidityData();
+edge/data/dataset.h:33:    time_t getTimestamp();
+edge/data/humidity_data.cpp:1:#include "humidity_data.h"
+edge/data/humidity_data.cpp:3:HumidityData::HumidityData(time_t timestamp, double min, double max, double avg)
+edge/data/humidity_data.cpp:6:  this->avg = avg;
+edge/data/humidity_data.cpp:18:HumidityData *HumidityData::getNext()
+edge/data/humidity_data.cpp:25:  this->avg = value;
+edge/data/humidity_data.cpp:28:double HumidityData::getValue()
+edge/data/humidity_data.cpp:30:  return this->avg;
+edge/data/humidity_data.cpp:38:double HumidityData::getMin()
+edge/data/humidity_data.cpp:48:double HumidityData::getMax()
+edge/data/humidity_data.cpp:58:time_t HumidityData::getTimestamp()
+edge/data/humidity_data.cpp:63:string HumidityData::getUnit()
+edge/data/dataset.cpp:14:int DataSet::getNumHouseData()
+edge/data/dataset.cpp:34:HouseData *DataSet::getHouseData(int index)
+edge/data/dataset.cpp:42:      ret = ret->getNext();
+edge/data/dataset.cpp:55:HouseData *DataSet::getNextHouseData()
+edge/data/dataset.cpp:58:  ret = this->getHouseData(this->iterator);
+edge/data/dataset.cpp:64:void DataSet::setTemperatureData(TemperatureData *temp)
+edge/data/dataset.cpp:66:  this->temp = temp;
+edge/data/dataset.cpp:69:TemperatureData *DataSet::getTemperatureData()
+edge/data/dataset.cpp:71:  return this->temp;
+edge/data/dataset.cpp:74:void DataSet::setHumidityData(HumidityData *humid)
+edge/data/dataset.cpp:76:  this->humid = humid;
+edge/data/dataset.cpp:79:HumidityData *DataSet::getHumidityData()
+edge/data/dataset.cpp:81:  return this->humid;
+edge/data/dataset.cpp:84:time_t DataSet::getTimestamp()
+edge/data/temperature_data.cpp:1:#include "temperature_data.h"
+edge/data/temperature_data.cpp:3:TemperatureData::TemperatureData(time_t timestamp, double min, double max, double avg)
+edge/data/temperature_data.cpp:6:  this->avg = avg;
+edge/data/temperature_data.cpp:18:TemperatureData *TemperatureData::getNext()
+edge/data/temperature_data.cpp:25:  this->avg = value;
+edge/data/temperature_data.cpp:28:double TemperatureData::getValue()
+edge/data/temperature_data.cpp:30:  return this->avg;
+edge/data/temperature_data.cpp:38:double TemperatureData::getMin()
+edge/data/temperature_data.cpp:48:double TemperatureData::getMax()
+edge/data/temperature_data.cpp:58:time_t TemperatureData::getTimestamp()
+edge/data/temperature_data.cpp:63:string TemperatureData::getUnit()
+edge/data/temperature_data.h:13:    double avg;
+edge/data/temperature_data.h:19:    TemperatureData(time_t timestamp, double min, double max, double avg);
+edge/data/temperature_data.h:22:    TemperatureData *getNext();
+edge/data/temperature_data.h:25:    double getValue();
+edge/data/temperature_data.h:28:    double getMin();
+edge/data/temperature_data.h:31:    double getMax();
+edge/data/temperature_data.h:34:    time_t getTimestamp();
+edge/data/temperature_data.h:36:    string getUnit();
+edge/data/raw_data.h:7:// monthly mean values (power)
+edge/data/raw_data.h:8:int power_avg[] = {
+edge/data/raw_data.h:13:// daily mean values (temperature)
+edge/data/raw_data.h:14:double temp_avg[] = {
+edge/data/raw_data.h:90:// daily max values (temperature)
+edge/data/raw_data.h:91:double temp_max[] = {
+edge/data/raw_data.h:167:// daily min values (temperature)
+edge/data/raw_data.h:168:double temp_min[] = {
+edge/data/raw_data.h:244:// daily mean values (humidity)
+edge/data/raw_data.h:245:double humid_avg[] = {
+edge/data/raw_data.h:321:// daily max values (humidity)
+edge/data/raw_data.h:322:int humid_max[] = {
+edge/data/raw_data.h:398:// daily min values (humidity)
+edge/data/raw_data.h:399:int humid_min[] = {
+edge/data/raw_data.h:552:// index (month)
+edge/data/raw_data.h:553:const char *month[] = {
+edge/data/power_data.cpp:1:#include "power_data.h"
+edge/data/power_data.cpp:3:PowerData::PowerData(time_t timestamp, double avg)
+edge/data/power_data.cpp:6:  this->avg = avg;
+edge/data/power_data.cpp:16:PowerData *PowerData::getNext()
+edge/data/power_data.cpp:23:  this->avg = value;
+edge/data/power_data.cpp:26:double PowerData::getValue()
+edge/data/power_data.cpp:28:  return this->avg;
+edge/data/power_data.cpp:36:time_t PowerData::getTimestamp()
+edge/data/info.cpp:29:string Info::getSerial()
+edge/data/info.cpp:65:string Info::getName()
+edge/data/info.cpp:94:string Info::getAddress()
+edge/data/data.h:4:#include "power_data.h"
+edge/data/data.h:5:#include "humidity_data.h"
+edge/data/data.h:6:#include "temperature_data.h"
+edge/data/power_data.h:13:    double avg;
+edge/data/power_data.h:17:    PowerData(time_t timestamp, double avg);
+edge/data/power_data.h:20:    PowerData *getNext();
+edge/data/power_data.h:23:    double getValue();
+edge/data/power_data.h:26:    time_t getTimestamp();
+edge/data/power_data.h:28:    string getUnit();
+edge/data/house_data.h:6:#include "power_data.h"
+edge/data/house_data.h:19:    HouseData(Info *info, PowerData *power);
+edge/data/house_data.h:21:    Info *getInfo();
+edge/data/house_data.h:23:    string getSerial();
+edge/data/house_data.h:24:    string getName();
+edge/data/house_data.h:25:    string getAddress();
+edge/data/house_data.h:27:    void setPowerData(PowerData *power);
+edge/data/house_data.h:28:    PowerData *getPowerData();
+edge/data/house_data.h:31:    HouseData *getNext();
+edge/data/humidity_data.h:13:    double avg;
+edge/data/humidity_data.h:19:    HumidityData(time_t timestamp, double min, double max, double avg);
+edge/data/humidity_data.h:22:    HumidityData *getNext();
+edge/data/humidity_data.h:25:    double getValue();
+edge/data/humidity_data.h:28:    double getMin();
+edge/data/humidity_data.h:31:    double getMax();
+edge/data/humidity_data.h:34:    time_t getTimestamp();
+edge/data/humidity_data.h:36:    string getUnit();
+edge/data/info.h:20:    string getSerial();
+edge/data/info.h:23:    string getName();
+edge/data/info.h:26:    string getAddress();
+edge/data/house_data.cpp:11:HouseData::HouseData(Info *info, PowerData *power)
+edge/data/house_data.cpp:14:  this->data = power;
+edge/data/house_data.cpp:22:Info *HouseData::getInfo()
+edge/data/house_data.cpp:27:string HouseData::getSerial()
+edge/data/house_data.cpp:29:  return this->info->getSerial();
+edge/data/house_data.cpp:32:string HouseData::getName()
+edge/data/house_data.cpp:34:  return this->info->getName();
+edge/data/house_data.cpp:37:string HouseData::getAddress()
+edge/data/house_data.cpp:39:  return this->info->getAddress();
+edge/data/house_data.cpp:42:void HouseData::setPowerData(PowerData *power)
+edge/data/house_data.cpp:44:  this->data = power;
+edge/data/house_data.cpp:47:PowerData *HouseData::getPowerData()
+edge/data/house_data.cpp:57:HouseData *HouseData::getNext()
+edge/data_receiver.cpp:5:#include "data/power_data.h"
+edge/data_receiver.cpp:6:#include "data/temperature_data.h"
+edge/data_receiver.cpp:7:#include "data/humidity_data.h"
+edge/data_receiver.cpp:19:int DataReceiver::getNumOfPeriod()
+edge/data_receiver.cpp:32:DataSet *DataReceiver::getDataSet(time_t timestamp)
+edge/data_receiver.cpp:36:  PowerData *power;
+edge/data_receiver.cpp:37:  TemperatureData *temp;
+edge/data_receiver.cpp:38:  HumidityData *humid;
+edge/data_receiver.cpp:50:    if (!strncmp(buf, month[midx], 7))
+edge/data_receiver.cpp:54:  mean = power_avg[midx];
+edge/data_receiver.cpp:63:  temp = new TemperatureData(timestamp, temp_min[didx], temp_max[didx], temp_avg[didx]);
+edge/data_receiver.cpp:64:  ret->setTemperatureData(temp);
+edge/data_receiver.cpp:66:  humid = new HumidityData(timestamp, humid_min[didx], humid_max[didx], humid_avg[didx]);
+edge/data_receiver.cpp:67:  ret->setHumidityData(humid);
+edge/data_receiver.cpp:78:    power = new PowerData(timestamp, value);
+edge/data_receiver.cpp:79:    data->setPowerData(power);
+edge/edge.cpp:49:    ds = this->dr->getDataSet(curr);
+edge/main.cpp:4:#include <getopt.h>
+edge/main.cpp:43:    c = getopt_long(argc, argv, opt, long_options, &option_index);
+edge/network_manager.cpp:32:const char *NetworkManager::getAddress()
+edge/network_manager.cpp:42:int NetworkManager::getPort()
+edge/network_manager.cpp:86:  // Example) minimum temperature (1 byte) || minimum humidity (1 byte) || minimum power (2 bytes) || month (1 byte)
+edge/network_manager.cpp:98:  // Example) edge -> server: temperature (1 byte) || humidity (1 byte) || power (2 bytes) || month (1 byte)
+edge/process_manager.cpp:31:  int tmp, min_humid, min_temp, min_power, month;
+edge/process_manager.cpp:35:  tdata = ds->getTemperatureData();
+edge/process_manager.cpp:36:  hdata = ds->getHumidityData();
+edge/process_manager.cpp:37:  num = ds->getNumHouseData();
+edge/process_manager.cpp:39:  // Example) I will give the minimum daily temperature (1 byte), the minimum daily humidity (1 byte), 
+edge/process_manager.cpp:40:  // the minimum power data (2 bytes), the month value (1 byte) to the network manager
+edge/process_manager.cpp:42:  // Example) getting the minimum daily temperature
+edge/process_manager.cpp:43:  min_temp = (int) tdata->getMin();
+edge/process_manager.cpp:45:  // Example) getting the minimum daily humidity
+edge/process_manager.cpp:46:  min_humid = (int) hdata->getMin();
+edge/process_manager.cpp:48:  // Example) getting the minimum power value
+edge/process_manager.cpp:49:  min_power = 10000;
+edge/process_manager.cpp:52:    house = ds->getHouseData(i);
+edge/process_manager.cpp:53:    pdata = house->getPowerData();
+edge/process_manager.cpp:54:    tmp = (int)pdata->getValue();
+edge/process_manager.cpp:56:    if (tmp < min_power)
+edge/process_manager.cpp:57:      min_power = tmp;
+edge/process_manager.cpp:60:  // Example) getting the month value from the timestamp
+edge/process_manager.cpp:61:  ts = ds->getTimestamp();
+edge/process_manager.cpp:63:  month = tm->tm_mon + 1;
+edge/process_manager.cpp:71:  VAR_TO_MEM_1BYTE_BIG_ENDIAN(min_temp, p);
+edge/process_manager.cpp:73:  VAR_TO_MEM_1BYTE_BIG_ENDIAN(min_humid, p);
+edge/process_manager.cpp:75:  VAR_TO_MEM_2BYTES_BIG_ENDIAN(min_power, p);
+edge/process_manager.cpp:77:  VAR_TO_MEM_1BYTE_BIG_ENDIAN(month, p);
+edge/data_receiver.h:23:    int getNumOfPeriod();
+edge/data_receiver.h:26:    DataSet *getDataSet(time_t timestamp);
+edge/edge.h:22:    const char *getAddress();
+edge/edge.h:25:    int getPort();
+edge/network_manager.h:20:    const char *getAddress();
+edge/network_manager.h:23:    int getPort();
