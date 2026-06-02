@@ -98,13 +98,13 @@ class Server:
             sys.exit(1)
 
     def parse_data(self, buf, is_training):
-        temp = int.from_bytes(buf[0:1], byteorder="big", signed=True)
-        humid = int.from_bytes(buf[1:2], byteorder="big", signed=True)
-        power = int.from_bytes(buf[2:4], byteorder="big", signed=True)
+        power = int.from_bytes(buf[0:2], byteorder="big", signed=True)
+        temp = int.from_bytes(buf[2:3], byteorder="big", signed=True)
+        humid = int.from_bytes(buf[3:4], byteorder="big", signed=True)
         month = int.from_bytes(buf[4:5], byteorder="big", signed=True)
 
-        lst = [temp, humid, power, month]
-        logging.info("[temp, humid, power, month] = {}".format(lst))
+        lst = [power, temp, humid, month]
+        logging.info("[avg_power, avg_temp, avg_humid, month] = {}".format(lst))
 
         self.send_instance(lst, is_training)
 
