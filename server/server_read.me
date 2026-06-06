@@ -1,0 +1,8 @@
+V1 테스트: 그대로 두기 (self.data_len = 5)
+python server.py --algorithm lstm --caddr [AI_IP] --cport 5551 --lport 5555 --dimension 4 --index 0 --name lstm --ntrain 200 --ntest 50
+
+V2 테스트: 주석처리(# self.data_len = 5), 주석 해제(self.data_len = 6), 함수 parse_data()에서 V1 코드 전체를 """ ... """로 감싸고, V2의 """ 두 개를 지워서 V2만 살림.
+python server.py --algorithm lstm --caddr [AI_IP] --cport 5551 --lport 5555 --dimension 5 --index 0 --name lstm --ntrain 200 --ntest 50
+
+V3 테스트: 주석처리(# self.data_len = 5), 주석 해제(self.data_len = 6), 함수 parse_data()에서 v3만 살아 있게.
+python server.py --algorithm lstm --caddr [AI_IP] --cport 5551 --lport 5555 --dimension 5 --index 0 --name lstm --ntrain 200 --ntest 50

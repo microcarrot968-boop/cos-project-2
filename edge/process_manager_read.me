@@ -1,0 +1,11 @@
+V1 테스트: V1 block만 켜기 → dimension 4
+V2 테스트: V1 block 주석처리, V2 block 주석 해제 → dimension 5
+V3 테스트: V1/V2 block 주석처리, V3 block 주석 해제 → dimension 5
+
+V1: 평균 전력, 평균 온도, 평균 습도, 월
+V2: 평균 전력, 평균 온도, 온도 범위 , 평균 습도, 월 -> 6바이트 이므로 network_manager.cpp에서 tbs=5;를 tbs=dlen;으로 바꾸기
+V3: 평균 전력, Max온도, Min온도, 평균 습도, 월
+
+항상 target은 전력이므로, index 0
+
+주석처리 하는 방법 /* */ 열고 닫기
