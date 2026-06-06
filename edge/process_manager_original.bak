@@ -19,74 +19,142 @@ void ProcessManager::init()
 // TODO: You should implement this function if you want to change the result of the aggregation
 uint8_t *ProcessManager::processData(DataSet *ds, int *dlen)
 {
+  // ret will point to the memory buffer that stores processed data.
+  // p will be used as a moving pointer while writing values into the buffer.
   uint8_t *ret, *p;
-  int num;
+
+  // num stores the number of house data entries.
+  // len is declared in the original code but is not used in this function.
+  int num, len;
+
+  // house will point to each HouseData object.
   HouseData *house;
+
+  // info is declared in the original code but is not used in this function.
+  Info *info;
+
+  // tdata will point to the daily temperature data.
   TemperatureData *tdata;
+
+  // hdata will point to the daily humidity data.
   HumidityData *hdata;
+
+  // pdata will point to the power data of each house.
   PowerData *pdata;
 
+  // buf is declared in the original code but is not used in this function.
+  char buf[BUFLEN];
+
+  // Allocate a memory buffer to store the processed data.
   ret = (uint8_t *)malloc(BUFLEN);
 
-  int tmp, avg_power, avg_temp, avg_humid, month;
-  int sum_power;
+  // tmp is used to temporarily store each house's power value.
+  // min_humid stores the minimum daily humidity.
+  // min_temp stores the minimum daily temperature.
+  // min_power stores the minimum power value among all houses.
+  // month stores the month value extracted from the timestamp.
+  int tmp, min_humid, min_temp, min_power, month;
+
+  // ts stores the timestamp of the current DataSet.
   time_t ts;
+
+  // tm stores converted calendar time information from the timestamp.
   struct tm *tm;
 
+  // Get the TemperatureData object from the DataSet.
   tdata = ds->getTemperatureData();
+
+  // Get the HumidityData object from the DataSet.
   hdata = ds->getHumidityData();
+
+  // Get the number of HouseData objects in the DataSet.
   num = ds->getNumHouseData();
 
-  // Feature vector:
-  // [avg_power, avg_temperature, avg_humidity, month]
-  // Target: next-day average power
-  // dimension = 4, index = 0
+  // Example) I will give the minimum daily temperature (1 byte), the minimum daily humidity (1 byte), 
+  // the minimum power data (2 bytes), the month value (1 byte) to the network manager
+  
+  // Example) getting the minimum daily temperature
 
-  // Get average daily temperature
-  avg_temp = (int)tdata->getValue();
+  // Get the minimum daily temperature and cast it to an integer.
+  min_temp = (int) tdata->getMin();
 
-  // Get average daily humidity
-  avg_humid = (int)hdata->getValue();
+  // Example) getting the minimum daily humidity
 
-  // Get average power value from all house data
-  sum_power = 0;
-  for (int i = 0; i < num; i++)
+  // Get the minimum daily humidity and cast it to an integer.
+  min_humid = (int) hdata->getMin();
+
+  // Example) getting the minimum power value
+
+  // Initialize min_power with a large value before searching for the minimum.
+  min_power = 10000;
+
+  // Iterate over all house data entries.
+  for (int i=0; i<num; i++)
   {
+    // Get the i-th HouseData object from the DataSet.
     house = ds->getHouseData(i);
+
+    // Get the PowerData object from the current HouseData object.
     pdata = house->getPowerData();
+
+    // Get the current house's power value and cast it to an integer.
     tmp = (int)pdata->getValue();
 
-    sum_power += tmp;
+    // If the current power value is smaller than min_power, update min_power.
+    if (tmp < min_power)
+      min_power = tmp;
   }
 
-  avg_power = sum_power / num;
+  // Example) getting the month value from the timestamp
 
-  // Get month value from the timestamp
+  // Get the timestamp from the DataSet.
   ts = ds->getTimestamp();
+
+  // Convert the timestamp into local calendar time.
   tm = localtime(&ts);
+
+  // Extract the month value.
+  // tm_mon starts from 0, so add 1 to make January equal to 1.
   month = tm->tm_mon + 1;
 
-  // Initialize memory to send to the network manager
+  // Example) initializing the memory to send to the network manager
+
+  // Initialize the allocated memory buffer with zeros.
   memset(ret, 0, BUFLEN);
+
+  // Initialize the data length to 0 before writing values into the buffer.
   *dlen = 0;
+
+  // Set p to the beginning address of the memory buffer.
   p = ret;
 
-  // Save values in memory in this order:
-  // avg_power: 2 bytes
-  // avg_temp: 1 byte
-  // avg_humid: 1 byte
-  // month: 1 byte
-  VAR_TO_MEM_2BYTES_BIG_ENDIAN(avg_power, p);
+  // Example) saving the values in the memory
+
+  // Store min_temp into the buffer as a 1-byte big-endian value.
+  VAR_TO_MEM_1BYTE_BIG_ENDIAN(min_temp, p);
+
+  // Increase the data length by 1 because min_temp uses 1 byte.
+  *dlen += 1;
+
+  // Store min_humid into the buffer as a 1-byte big-endian value.
+  VAR_TO_MEM_1BYTE_BIG_ENDIAN(min_humid, p);
+
+  // Increase the data length by 1 because min_humid uses 1 byte.
+  *dlen += 1;
+
+  // Store min_power into the buffer as a 2-byte big-endian value.
+  VAR_TO_MEM_2BYTES_BIG_ENDIAN(min_power, p);
+
+  // Increase the data length by 2 because min_power uses 2 bytes.
   *dlen += 2;
 
-  VAR_TO_MEM_1BYTE_BIG_ENDIAN(avg_temp, p);
-  *dlen += 1;
-
-  VAR_TO_MEM_1BYTE_BIG_ENDIAN(avg_humid, p);
-  *dlen += 1;
-
+  // Store month into the buffer as a 1-byte big-endian value.
   VAR_TO_MEM_1BYTE_BIG_ENDIAN(month, p);
+
+  // Increase the data length by 1 because month uses 1 byte.
   *dlen += 1;
 
+  // Return the starting address of the memory buffer.
+  // NetworkManager will send this buffer to the server.
   return ret;
 }

@@ -76,52 +76,109 @@ int NetworkManager::init()
 // TODO: You should revise the following code
 int NetworkManager::sendData(uint8_t *data, int dlen)
 {
+  // sock stores the socket descriptor used to communicate with the server.
+  // tbs means "to be sent" and stores the total number of bytes that should be sent.
+  // sent stores the number of bytes actually sent by one write() call.
+  // offset stores the current byte position while sending data.
+  // num and jlen are declared in the original code but are not used in this function.
   int sock, tbs, sent, offset, num, jlen;
+
+  // opcode stores the command type that will be sent to the server.
   unsigned char opcode;
+
+  // n is declared in the original code but is not used in this function.
   uint8_t n[4];
+
+  // p is declared in the original code but is not used in this function.
   uint8_t *p;
 
+  // Copy the socket descriptor stored in the NetworkManager object.
   sock = this->sock;
+
   // Example) data (processed by ProcessManager) consists of:
   // Example) minimum temperature (1 byte) || minimum humidity (1 byte) || minimum power (2 bytes) || month (1 byte)
   // Example) edge -> server: opcode (OPCODE_DATA, 1 byte)
+
+  // Set the opcode to OPCODE_DATA.
+  // This tells the server that the following message contains processed data.
   opcode = OPCODE_DATA;
-  tbs = 1; offset = 0;
+
+  // Set the number of bytes to send to 1 because opcode is 1 byte.
+  tbs = 1;
+
+  // Initialize the sending offset to the beginning of the opcode.
+  offset = 0;
+
+  // Keep sending until the complete opcode is sent.
   while (offset < tbs)
   {
+    // Send the remaining bytes of the opcode through the socket.
     sent = write(sock, &opcode + offset, tbs - offset);
+
+    // If write() successfully sends some bytes, move the offset forward.
     if (sent > 0)
       offset += sent;
   }
+
+  // Check that the number of sent bytes is exactly the same as tbs.
   assert(offset == tbs);
 
   // Example) edge -> server: temperature (1 byte) || humidity (1 byte) || power (2 bytes) || month (1 byte)
-  tbs = 5; offset = 0;
+
+  // Set the number of bytes to send to 5.
+  // In the original protocol, the processed data has a fixed length of 5 bytes.
+  tbs = 5;
+
+  // Reset the sending offset to the beginning of the data buffer.
+  offset = 0;
+
+  // Keep sending until the entire 5-byte data buffer is sent.
   while (offset < tbs)
   {
+    // Send the remaining bytes of the processed data buffer.
     sent = write(sock, data + offset, tbs - offset);
+
+    // If write() successfully sends some bytes, move the offset forward.
     if (sent > 0)
       offset += sent;
   }
+
+  // Check that exactly 5 bytes of processed data were sent.
   assert(offset == tbs);
 
+  // Return 0 to indicate that the data transmission finished successfully.
   return 0;
 }
 
 // TODO: Please revise or implement this function as you want. You can also remove this function if it is not needed
 uint8_t NetworkManager::receiveCommand() 
 {
+  // sock stores the socket descriptor used to receive a command from the server.
   int sock;
+
+  // opcode stores the command received from the server.
   uint8_t opcode;
+
+  // p is declared in the original code but is not used in this function.
   uint8_t *p;
 
+  // Copy the socket descriptor stored in the NetworkManager object.
   sock = this->sock;
+
+  // Initialize opcode as OPCODE_WAIT.
+  // The edge keeps waiting while the server sends OPCODE_WAIT.
   opcode = OPCODE_WAIT;
 
+  // Keep reading a command from the server while the command is OPCODE_WAIT.
   while (opcode == OPCODE_WAIT)
+    // Receive 1 byte from the server and store it in opcode.
     read(sock, &opcode, 1);
 
+  // Check that the received command is either OPCODE_DONE or OPCODE_QUIT.
+  // OPCODE_DONE means the edge can continue the next loop.
+  // OPCODE_QUIT means the edge should stop the loop.
   assert(opcode == OPCODE_DONE || opcode == OPCODE_QUIT) ;
 
+  // Return the received opcode to the caller.
   return opcode;
 }

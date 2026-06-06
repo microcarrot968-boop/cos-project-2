@@ -1,0 +1,299 @@
+#include "../edge/setting.h"
+#include "../edge/edge.h"
+
+#include <iostream>
+#include <ctime>
+
+#include "../edge/byte_op.h"
+
+#define BUFLEN 1024
+
+using namespace std;
+
+int main(int argc, char *argv[])
+{
+  // Declare a DataReceiver pointer to load daily raw data from the dataset files.
+  DataReceiver *dr;
+
+  // Declare a DataSet pointer to store one day's complete dataset.
+  DataSet *ds;
+
+  // Declare a HouseData pointer to access each house's private information and power data.
+  HouseData *house;
+
+  // Declare a TemperatureData pointer to access daily temperature information.
+  TemperatureData *tdata;
+
+  // Declare a HumidityData pointer to access daily humidity information.
+  HumidityData *hdata;
+
+  // Declare a PowerData pointer to access the power value of a specific house.
+  PowerData *pdata;
+
+  // num stores the number of house data entries.
+  // tmp is used for temporary integer values after type casting.
+  int num, tmp;
+
+  // curr stores the timestamp used to select one daily dataset.
+  // ts stores the timestamp retrieved from the DataSet object.
+  time_t curr, ts;
+
+  // Declare variables for maximum, average, and minimum temperature values.
+  double max_temp, avg_temp, min_temp;
+
+  // Declare variables for maximum, average, and minimum humidity values.
+  double max_humid, avg_humid, min_humid;
+
+  // Declare variables for individual, total, average, maximum, and minimum power values.
+  double power, sum_power, avg_power, max_power, min_power;
+
+  // Declare a byte buffer used to store values in memory before printing or sending.
+  unsigned char buf[BUFLEN];
+
+  // Declare a pointer used to write values sequentially into the byte buffer.
+  unsigned char *p;
+
+  // Set the current timestamp to 1609459200.
+  // This timestamp corresponds to a specific date used for testing the dataset.
+  curr = 1609459200;
+
+  // Create a new DataReceiver object.
+  dr = new DataReceiver();
+
+  // Load the daily DataSet that corresponds to the timestamp curr.
+  ds = dr->getDataSet(curr);
+  
+  // 1. Write a statement to get the timestamp value to 'ts' and print out the value (please refer to dataset.h)
+
+  // Get the timestamp value from the DataSet object.
+  ts = ds->getTimestamp();
+
+  // Print the timestamp value.
+  cout << "timestamp: " << ts << endl;
+
+  // 2. Write a statement to get the number of house data that contains the private information and the power value to 'num' (dataset.h)
+
+  // Get the number of house data entries stored in this DataSet.
+  num = ds->getNumHouseData();
+
+  // Print the number of house data entries.
+  cout << "# of house data: " << num << endl;
+
+  // 3. Write a statement to get the first house data to 'house' (please refer to dataset.h) 
+
+  // Get the first HouseData object from the DataSet.
+  house = ds->getHouseData(0);
+  
+  // Write a statement to get the 10th house data to 'house' (dataset.h)
+
+  // Get the 10th HouseData object from the DataSet.
+  // Since the index starts from 0, index 9 means the 10th house.
+  house = ds->getHouseData(9);
+  
+  // Get the power data to 'pdata' (house_data.h)
+
+  // Get the PowerData object from the selected HouseData object.
+  pdata = house->getPowerData();
+  
+  // Get the daily power value to 'power' and print out the value (power_data.h)
+
+  // Get the daily power value from the PowerData object.
+  power = pdata->getValue();
+
+  // Print the daily power value.
+  cout << "Power: " << power << endl;
+  
+  // Explicitly cast the type from double to int and assign it to 'tmp', and print out the value
+
+  // Get the daily power value again and cast it from double to int.
+  tmp = (int)pdata->getValue();
+
+  // Print the casted integer power value.
+  cout << "Power (casted): " << tmp << endl;
+  
+  // Compute the value averaged over all the power data by using 'sum_power' and 'num', 
+  // assign the average value to 'avg_power', and print out the value
+
+  // Initialize the sum of power values to 0.
+  sum_power = 0;
+
+  // Iterate over all house data entries in the DataSet.
+  for (int i=0; i<num; i++)
+  {
+    // Get the i-th HouseData object.
+    house = ds->getHouseData(i);
+
+    // Get the PowerData object from the current HouseData object.
+    pdata = house->getPowerData();
+
+    // Add the current house's power value to sum_power.
+    sum_power += pdata->getValue();
+  }
+
+  // Calculate the average power by dividing the total power by the number of houses.
+  avg_power = sum_power / num;
+
+  // Print the average power value.
+  cout << "Power (avg): " << avg_power << endl;
+  
+  // Find the maximum value among all the power data 
+
+  // Initialize max_power to -1 so that any valid power value will be larger.
+  max_power = -1;
+
+  // Iterate over all house data entries.
+  for (int i=0; i<num; i++)
+  {
+    // Get the i-th HouseData object.
+    house = ds->getHouseData(i);
+
+    // Get the PowerData object from the current HouseData object.
+    pdata = house->getPowerData();
+
+    // Get the current house's power value.
+    power = pdata->getValue();
+
+    // Update max_power if the current power value is larger than the previous maximum.
+    if (power > max_power)
+      max_power = power;
+  }
+
+  // Print the maximum power value.
+  cout << "Power (max): " << max_power << endl;
+  
+  // Find the minimum value among all the power data
+
+  // Initialize min_power to a large value so that any valid power value will be smaller.
+  min_power = 10000;
+
+  // Iterate over all house data entries.
+  for (int i=0; i<num; i++)
+  {
+    // Get the i-th HouseData object.
+    house = ds->getHouseData(i);
+
+    // Get the PowerData object from the current HouseData object.
+    pdata = house->getPowerData();
+
+    // Get the current house's power value.
+    power = pdata->getValue();
+
+    // Update min_power if the current power value is smaller than the previous minimum.
+    if (power < min_power)
+      min_power = power;
+  }
+
+  // Print the minimum power value.
+  cout << "Power (min): " << min_power << endl;
+
+  // 4. Write a statement to get the temperature data to 'tdata' (dataset.h)
+
+  // Get the TemperatureData object from the DataSet.
+  tdata = ds->getTemperatureData();
+  
+  // Get the maximum value of the daily temperature (temperature_data.h)
+
+  // Get the maximum daily temperature value.
+  max_temp = tdata->getMax();
+
+  // Print the maximum daily temperature.
+  cout << "Temperature (max): " << max_temp << endl;
+  
+  // Get the average value of the daily temperature (temperature_data.h)
+
+  // Get the average daily temperature value.
+  avg_temp = tdata->getValue();
+
+  // Print the average daily temperature.
+  cout << "Temperature (avg): " << avg_temp << endl;
+  
+  // Get the minimum value of the daily temperature (temperature_data.h)
+
+  // Get the minimum daily temperature value.
+  min_temp = tdata->getMin();
+
+  // Print the minimum daily temperature.
+  cout << "Temperature (min): " << min_temp << endl;
+  
+  // Explicitly cast the type of the maximum value from double to int, assign the resultant value to 'tmp', and print it out
+
+  // Get the maximum temperature again and cast it from double to int.
+  tmp = (int)tdata->getMax();
+
+  // Print the casted integer maximum temperature value.
+  cout << "Temperature (max, casted): " << tmp << endl;
+
+  // 5. Write a statement to get the humidity data to 'hdata' (dataset.h)
+
+  // Get the HumidityData object from the DataSet.
+  hdata = ds->getHumidityData();
+  
+  // Get the maximum value of the daily humidity (humidity_data.h)
+
+  // Get the maximum daily humidity value.
+  max_humid = hdata->getMax();
+
+  // Print the maximum daily humidity.
+  cout << "Humidity (max): " << max_humid << endl;
+  
+  // Get the average value of the daily humidity (humidity_data.h)
+
+  // Get the average daily humidity value.
+  avg_humid = hdata->getValue();
+
+  // Print the average daily humidity.
+  cout << "Humidity (avg): " << avg_humid << endl;
+  
+  // Get the minimum value of the daily humidity (humidity_data.h)
+
+  // Get the minimum daily humidity value.
+  min_humid = hdata->getMin();
+
+  // Print the minimum daily humidity.
+  cout << "Humidity (min): " << min_humid << endl;
+  
+  // Explicitly cast the type of the minimum value from double to int, assign the resultant value to 'tmp', and print it out
+
+  // Get the minimum humidity again and cast it from double to int.
+  tmp = (int)hdata->getMin();
+
+  // Print the casted integer minimum humidity value.
+  cout << "Humidity (min, casted): " << tmp << endl;
+
+  // 6. Initialize the buffer 'buf' with zeros (its length is defined as BUFLEN) (use the memset() function, please google it!)
+
+  // Fill the entire buffer with zeros before writing values into it.
+  memset(buf, 0, BUFLEN);
+
+  // 7. Write statements to save the values into 'buf' using 'p' as follows:
+  // # of house data (2 bytes) || maximum power (integer) (4 bytes) || maximum temperature (integer) (2 bytes)
+  // Print out the buffer
+  // Please use the macros defined in edge/byte_op.h
+
+  // Set p to the beginning address of the buffer.
+  p = buf;
+
+  // Store the number of house data entries into the buffer as a 2-byte big-endian value.
+  VAR_TO_MEM_2BYTES_BIG_ENDIAN(num, p);
+
+  // Cast the minimum power value from double to int.
+  tmp = (int)min_power;
+
+  // Store the integer minimum power value into the buffer as a 4-byte big-endian value.
+  VAR_TO_MEM_4BYTES_BIG_ENDIAN(tmp, p);
+
+  // Cast the maximum temperature value from double to int.
+  tmp = (int)max_temp;
+
+  // Store the integer maximum temperature value into the buffer as a 4-byte big-endian value.
+  VAR_TO_MEM_4BYTES_BIG_ENDIAN(tmp, p);
+
+  // Calculate the number of bytes written into the buffer.
+  tmp = p - buf;
+
+  // Print the raw memory contents of the buffer.
+  PRINT_MEM(buf, tmp);
+
+  // Return 0 to indicate that the program finished successfully.
+	return 0;
+}

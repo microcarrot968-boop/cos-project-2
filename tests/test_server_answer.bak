@@ -1,0 +1,133 @@
+import socket
+import threading
+import argparse
+import logging
+
+OPCODE_REPLY = 2
+
+def protocol_execution(sock):
+    # 1. Alice -> Bob: length of the name (4 bytes) || name (length bytes)
+    # Get the length information (4 bytes)
+
+    # Receive 4 bytes from the client.
+    # These 4 bytes represent the length of the incoming name.
+    buf = sock.recv(4)
+
+    # Convert the received 4-byte value into an integer using big-endian byte order.
+    length = int.from_bytes(buf, "big")
+
+    # Print the decoded length value.
+    logging.info("[*] Length received: {}".format(length))
+
+    # Get the name (Alice)
+
+    # Receive the name string from the client using the decoded length.
+    buf = sock.recv(length)
+
+    # Decode the received byte data into a string and print it.
+    logging.info("[*] Name received: {}".format(buf.decode()))
+
+    # 2. Bob -> Alice: length of the name (4 bytes) || name (length bytes)
+    # Send the length information (4 bytes)
+
+    # Prepare the name that the server will send back to the client.
+    name = "Bob"
+
+    # Calculate the length of the string "Bob".
+    length = len(name)
+
+    # Print the length value that will be sent to the client.
+    logging.info("[*] Length to be sent: {}".format(length))
+
+    # Convert the length into a 4-byte big-endian value and send it to the client.
+    sock.send(int.to_bytes(length, 4, "big"))
+
+    # Send the name (Bob)
+
+    # Print the name that will be sent to the client.
+    logging.info("[*] Name to be sent: {}".format(name))
+
+    # Encode the name string into bytes and send it to the client.
+    sock.send(name.encode())
+
+    # Implement following the instructions below
+    # 3. Alice -> Bob: opcode (4 bytes) || arg1 (4 bytes) || arg2 (4 bytes)
+    # The opcode should be 1
+
+    # Receive 12 bytes from the client:
+    # 4 bytes for opcode, 4 bytes for arg1, and 4 bytes for arg2.
+    buf = sock.recv(12)
+
+    # The values are encoded in the big-endian style and should be translated into the little-endian style (because my machine follows the little-endian style)
+
+    # Decode the first 4 bytes as the opcode.
+    opcode = int.from_bytes(buf[0:4], "little")
+
+    # Decode the next 4 bytes as the first integer argument.
+    arg1 = int.from_bytes(buf[4:8], "little")
+
+    # Decode the last 4 bytes as the second integer argument.
+    arg2 = int.from_bytes(buf[8:12], "little")
+
+    # Print the decoded opcode.
+    logging.info("[*] Opcode: {}".format(opcode))
+
+    # Print the decoded first argument.
+    logging.info("[*] Arg1: {}".format(arg1))
+
+    # Print the decoded second argument.
+    logging.info("[*] Arg2: {}".format(arg2))
+
+    # 4. Bob -> Alice: opcode (4 bytes) || result (4 bytes)
+    # The opcode should be 2
+
+    # Calculate the result by adding the two received arguments.
+    result = arg1 + arg2
+
+    # Print the calculated result.
+    logging.info("[*] Result: {}".format(result))
+
+    # Store the reply opcode value.
+    opcode = 2
+
+    # Send the reply opcode to the client as a 4-byte big-endian value.
+    sock.send(int.to_bytes(OPCODE_REPLY, 4, "big"))
+
+    # Send the calculated result to the client as a 4-byte big-endian value.
+    sock.send(int.to_bytes(result, 4, "big"))
+
+    # Close the socket connection after finishing the protocol.
+    sock.close()
+
+def run(addr, port):
+    server = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    server.bind((addr, port))
+
+    server.listen(2)
+    logging.info("[*] Server is Listening on {}:{}".format(addr, port))
+
+    while True:
+        client, info = server.accept()
+
+        logging.info("[*] Server accept the connection from {}:{}".format(info[0], info[1]))
+
+        client_handle = threading.Thread(target=protocol_execution, args=(client,))
+        client_handle.start()
+
+def command_line_args():
+    parser = argparse.ArgumentParser()
+    parser.add_argument("-a", "--addr", metavar="<server's IP address>", help="Server's IP address", type=str, default="0.0.0.0")
+    parser.add_argument("-p", "--port", metavar="<server's open port>", help="Server's port", type=int, required=True)
+    parser.add_argument("-l", "--log", metavar="<log level (DEBUG/INFO/WARNING/ERROR/CRITICAL)>", help="Log level (DEBUG/INFO/WARNING/ERROR/CRITICAL)", type=str, default="INFO")
+    args = parser.parse_args()
+    return args
+
+def main():
+    args = command_line_args()
+    log_level = args.log
+    logging.basicConfig(level=log_level)
+
+    run(args.addr, args.port)
+
+if __name__ == "__main__":
+    main()

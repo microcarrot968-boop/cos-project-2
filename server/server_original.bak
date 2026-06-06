@@ -32,45 +32,100 @@ class Server:
             self.listener()
 
     def connecter(self):
+        # Initialize success as True.
+        # This variable indicates whether the server successfully connects to the AI module.
         success = True
+
+        # Create a TCP socket object for connecting to the AI module.
         self.ai = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+
+        # Connect the socket to the AI module using its IP address and port number.
         self.ai.connect((self.caddr, self.cport))
+
+        # Build the URL used to register or initialize a model in the AI module.
+        # self.name is used as the model name in the AI module.
         url = "http://{}:{}/{}".format(self.caddr, self.cport, self.name)
+
+        # Create an empty dictionary that will store the model initialization request.
         request = {}
+
+        # Store the selected AI algorithm name in the request dictionary.
         request['algorithm'] = self.algorithm
+
+        # Store the dimension of each input instance in the request dictionary.
         request['dimension'] = self.dimension
+
+        # Store the target index in the request dictionary.
+        # This index tells the AI module which element of the feature vector should be predicted.
         request['index'] = self.index
+
+        # Convert the request dictionary into a JSON-formatted string for logging.
         js = json.dumps(request)
+
+        # Print the JSON request in debug mode.
         logging.debug("[*] To be sent to the AI module: {}".format(js))
+
+        # Send an HTTP POST request to the AI module with the request dictionary as JSON data.
         result = requests.post(url, json=js)
+
+        # Decode the response content from the AI module into a Python dictionary.
         response = json.loads(result.content)
+
+        # Print the decoded response in debug mode.
         logging.debug("[*] Received: {}".format(response))
 
+        # Check whether the response contains the key "opcode".
         if "opcode" not in response:
+            # If there is no opcode, the response format is invalid.
             logging.debug("[*] Invalid response")
+
+            # Set success to False because the connection or initialization failed.
             success = False
         else:
+            # If the AI module returns failure, handle the error.
             if response["opcode"] == "failure":
+                # Print a general error message.
                 logging.error("Error happened")
+
+                # If the response contains a reason, print the reason.
                 if "reason" in response:
                     logging.error("Reason: {}".format(response["reason"]))
                     logging.error("Please try again.")
                 else:
+                    # If no reason is provided, print an unknown reason message.
                     logging.error("Reason: unknown. not specified")
+
+                # Set success to False because the AI module reported failure.
                 success = False
             else:
+                # If the response is not failure, it should be success.
                 assert response["opcode"] == "success"
+
+                # Print a success message.
                 logging.info("[*] Successfully connected to the AI module")
+
+        # Return whether the connection and initialization were successful.
         return success
 
     def listener(self):
+        # Print the server's listening address and port.
         logging.info("[*] Server is listening on 0.0.0.0:{}".format(self.port))
 
+        # Keep accepting edge-device connections indefinitely.
         while True:
+            # Wait until an edge device connects to the server.
+            # client is the socket for communication with the connected edge device.
+            # info contains the client's address and port information.
             client, info = self.socket.accept()
+
+            # Print the address and port of the connected edge device.
             logging.info("[*] Server accept the connection from {}:{}".format(info[0], info[1]))
 
+            # Create a new thread to handle this client connection.
+            # The handler() function will process the protocol with this edge device.
             client_handle = threading.Thread(target=self.handler, args=(client,))
+
+            # Start the client-handling thread.
             client_handle.start()
 
     def send_instance(self, vlst, is_training):
@@ -112,95 +167,210 @@ class Server:
     # TODO: You should implement your own protocol in this function
     # The following implementation is just a simple example
     def handler(self, client):
+        # Print a message when the server starts handling one edge-device connection.
         logging.info("[*] Server starts to process the client's request")
 
+        # Copy the number of training instances into a local variable.
         ntrain = self.ntrain
+
+        # Build the URL for requesting training after all training instances are sent.
         url = "http://{}:{}/{}/training".format(self.caddr, self.cport, self.name)
 
+        # Start the training-data receiving loop.
         while True:
             # opcode (1 byte): 
+
+            # Receive 1 byte from the edge device.
+            # This byte represents the opcode of the message.
             rbuf = client.recv(1)
+
+            # Convert the received opcode byte into an integer using big-endian byte order.
             opcode = int.from_bytes(rbuf, "big")
+
+            # Print the received opcode in debug mode.
             logging.debug("[*] opcode: {}".format(opcode))
 
+            # Check whether the opcode means that the edge is sending data.
             if opcode == OPCODE_DATA:
+                # Print a message that a data report was received from the edge.
                 logging.info("[*] data report from the edge")
+
+                # Receive 5 bytes of processed data from the edge.
+                # In the original protocol, the data layout is fixed to 5 bytes.
                 rbuf = client.recv(5)
+
+                # Print the raw received buffer in debug mode.
                 logging.debug("[*] received buf: {}".format(rbuf))
+
+                # Decode the received data and send it to the AI module as training data.
                 self.parse_data(rbuf, True)
             else:
+                # If the opcode is not OPCODE_DATA, the protocol is invalid.
                 logging.error("[*] invalid opcode")
+
+                # Print an error message asking the user to try again.
                 logging.error("[*] please try again")
+
+                # Stop the program because the protocol failed.
                 sys.exit(1)
 
+            # Decrease the remaining number of training instances by 1.
             ntrain -= 1
 
+            # If more training instances are still needed, tell the edge to continue.
             if ntrain > 0:
+                # Set the opcode to OPCODE_DONE.
+                # This tells the edge to proceed to the next data item.
                 opcode = OPCODE_DONE
+
+                # Print the outgoing opcode in debug mode.
                 logging.debug("[*] send the opcode OPCODE_DONE")
+
+                # Send the 1-byte opcode to the edge device.
                 client.send(int.to_bytes(opcode, 1, "big"))
             else:
+                # If all training instances have been received, tell the edge to wait.
                 opcode = OPCODE_WAIT
+
+                # Print the outgoing opcode in debug mode.
                 logging.debug("[*] send the opcode OPCODE_WAIT")
+
+                # Send the 1-byte wait opcode to the edge device.
                 client.send(int.to_bytes(opcode, 1, "big"))
+
+                # Break out of the training-data receiving loop.
                 break
 
+        # Send an HTTP POST request to the AI module to start training.
         result = requests.post(url)
+
+        # Decode the response from the AI module.
         response = json.loads(result.content)
+
+        # Print the AI module's training response opcode in debug mode.
         logging.debug("[*] return: {}".format(response["opcode"]))
     
+        # Copy the number of testing instances into a local variable.
         ntest = self.ntest
+
+        # Build the URL for testing data.
         url = "http://{}:{}/{}/testing".format(self.caddr, self.cport, self.name)
+
+        # Set opcode to OPCODE_DONE to tell the edge to start the testing phase.
         opcode = OPCODE_DONE
+
+        # Print the outgoing opcode in debug mode.
         logging.debug("[*] send the opcode OPCODE_DONE")
+
+        # Send the opcode to the edge device.
         client.send(int.to_bytes(opcode, 1, "big"))
 
+        # Start the testing-data receiving loop.
         while ntest > 0:
             # opcode (1 byte): 
+
+            # Receive 1 byte opcode from the edge device.
             rbuf = client.recv(1)
+
+            # Convert the received opcode byte into an integer.
             opcode = int.from_bytes(rbuf, "big")
+
+            # Print the received opcode in debug mode.
             logging.debug("[*] opcode: {}".format(opcode))
 
+            # Check whether the edge is sending data.
             if opcode == OPCODE_DATA:
+                # Print a message that a data report was received from the edge.
                 logging.info("[*] data report from the edge")
+
+                # Receive 5 bytes of processed data from the edge.
                 rbuf = client.recv(5)
+
+                # Print the raw received buffer in debug mode.
                 logging.debug("[*] received buf: {}".format(rbuf))
+
+                # Decode the received data and send it to the AI module as testing data.
                 self.parse_data(rbuf, False)
             else:
+                # If the opcode is invalid, print an error message.
                 logging.error("[*] invalid opcode")
+
+                # Ask the user to try again.
                 logging.error("[*] please try again")
+
+                # Stop the program because the protocol failed.
                 sys.exit(1)
 
+            # Decrease the remaining number of testing instances by 1.
             ntest -= 1
 
+            # If more testing instances are still needed, tell the edge to continue.
             if ntest > 0:
+                # Set opcode to OPCODE_DONE to request the next data item.
                 opcode = OPCODE_DONE
+
+                # Send the 1-byte opcode to the edge device.
                 client.send(int.to_bytes(opcode, 1, "big"))
             else:
+                # If all testing instances have been received, tell the edge to quit.
                 opcode = OPCODE_QUIT
+
+                # Send the 1-byte quit opcode to the edge device.
                 client.send(int.to_bytes(opcode, 1, "big"))
+
+                # Break out of the testing-data receiving loop.
                 break
 
+        # Build the URL for requesting prediction results from the AI module.
         url = "http://{}:{}/{}/result".format(self.caddr, self.cport, self.name)
+
+        # Send an HTTP GET request to the AI module to get the result.
         result = requests.get(url)
+
+        # Decode the result response from the AI module.
         response = json.loads(result.content)
+
+        # Print the full response in debug mode.
         logging.debug("response: {}".format(response))
+
+        # Check whether the response contains an opcode.
         if "opcode" not in response:
+            # Print an error if the response format is invalid.
             logging.error("invalid response from the AI module: no opcode is specified")
+
+            # Ask the user to try again.
             logging.error("please try again")
+
+            # Stop the program because the AI module response is invalid.
             sys.exit(1)
         else:
+            # If the AI module reports failure, handle the error.
             if response["opcode"] == "failure":
+                # Print an error message.
                 logging.error("getting the result from the AI module failed")
+
+                # If the response includes a reason, print the reason.
                 if "reason" in response:
                     logging.error(response["reason"])
+
+                # Ask the user to try again.
                 logging.error("please try again")
+
+                # Stop the program because getting the result failed.
                 sys.exit(1)
+
+            # If the AI module reports success, print the prediction result.
             elif response["opcode"] == "success":
+                # Print the final prediction result.
                 self.print_result(response)
             else:
+                # Handle any unexpected opcode value.
                 logging.error("unknown error")
+
+                # Ask the user to try again.
                 logging.error("please try again")
+
+                # Stop the program because the response is unknown.
                 sys.exit(1)
 
     def print_result(self, result):

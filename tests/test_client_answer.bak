@@ -1,0 +1,363 @@
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <unistd.h>
+#include <arpa/inet.h>
+#include <sys/socket.h>
+#include <getopt.h>
+#include <stdint.h>
+
+#include "../edge/byte_op.h"
+
+#define BUFLEN        1024
+#define OPCODE_SUM    1
+#define OPCODE_REPLY  2
+
+void protocol_execution(int sock);
+void error_handling(const char *message);
+
+void usage(const char *pname)
+{
+  printf(">> Usage: %s [options]\n", pname);
+  printf("Options\n");
+  printf("  -a, --addr       Server's address\n");
+  printf("  -p, --port       Server's port\n");
+  exit(0);
+}
+
+int main(int argc, char *argv[])
+{
+	int sock;
+	struct sockaddr_in serv_addr;
+  char msg[] = "Hello, World!\n";
+	char message[30] = {0, };
+	int c, port, tmp, str_len;
+  char *pname;
+  uint8_t *addr;
+  uint8_t eflag;
+
+  pname = argv[0];
+  addr = NULL;
+  port = -1;
+  eflag = 0;
+
+  while (1)
+  {
+    int option_index = 0;
+    static struct option long_options[] = {
+      {"addr", required_argument, 0, 'a'},
+      {"port", required_argument, 0, 'p'},
+      {0, 0, 0, 0}
+    };
+
+    const char *opt = "a:p:0";
+
+    c = getopt_long(argc, argv, opt, long_options, &option_index);
+
+    if (c == -1)
+      break;
+
+    switch (c)
+    {
+      case 'a':
+        tmp = strlen(optarg);
+        addr = (uint8_t *)malloc(tmp);
+        memcpy(addr, optarg, tmp);
+        break;
+
+      case 'p':
+        port = atoi(optarg);
+        break;
+
+      default:
+        usage(pname);
+    }
+  }
+
+  if (!addr)
+  {
+    printf("[*] Please specify the server's address to connect\n");
+    eflag = 1;
+  }
+
+  if (port < 0)
+  {
+    printf("[*] Please specify the server's port to connect\n");
+    eflag = 1;
+  }
+
+  if (eflag)
+  {
+    usage(pname);
+    exit(0);
+  }
+
+	sock = socket(PF_INET, SOCK_STREAM, 0);
+	if (sock == -1)
+		error_handling("socket() error");
+
+	memset(&serv_addr, 0, sizeof(serv_addr));
+	serv_addr.sin_family = AF_INET;
+	serv_addr.sin_addr.s_addr = inet_addr((const char *)addr);
+	serv_addr.sin_port = htons(port);
+
+	if (connect(sock, (struct sockaddr*)&serv_addr, sizeof(serv_addr)) == -1)
+		error_handling("connect() error");
+
+  printf("[*] Connected to %s:%d\n", addr, port);
+  
+  protocol_execution(sock);
+
+	close(sock);
+	return 0;
+}
+
+void protocol_execution(int sock)
+{
+  // Prepare the name that the client will send to the server first.
+  char msg[] = "Alice";
+
+  // Prepare a buffer that will be used for receiving or sending raw bytes.
+  char buf[BUFLEN];
+
+  // tbs means "to be sent": the total number of bytes that should be sent.
+  // sent stores the number of bytes actually sent by one write() call.
+  // tbr means "to be received": the total number of bytes that should be received.
+  // rcvd stores the number of bytes actually received by one read() call.
+  // offset stores the current position in the buffer while sending or receiving.
+  int tbs, sent, tbr, rcvd, offset;
+
+  // len stores the length of the name message.
+  int len;
+
+  // tbs: the number of bytes to send
+  // tbr: the number of bytes to receive
+  // offset: the offset of the message
+
+  // 1. Alice -> Bob: length of the name (4 bytes) || name (length bytes)
+  // Send the length information (4 bytes)
+
+  // Calculate the length of the string "Alice".
+  len = strlen(msg);
+
+  // Print the length before converting it to network byte order.
+  printf("[*] Length information to be sent: %d\n", len);
+
+  // Convert the integer length from host byte order to network byte order.
+  len = htonl(len);
+
+  // Set the number of bytes to send as 4 because the length field is an integer.
+  tbs = 4;
+
+  // Initialize the offset to 0 before sending bytes.
+  offset = 0;
+
+  // Keep sending until exactly 4 bytes of the length field are sent.
+  while (offset < tbs)
+  {
+    // Send the remaining bytes of the length field through the socket.
+    sent = write(sock, &len + offset, tbs - offset);
+
+    // If some bytes were successfully sent, move the offset forward.
+    if (sent > 0)
+      offset += sent;
+  }
+
+  // Send the name (Alice)
+
+  // Convert len back to host byte order to get the actual string length.
+  tbs = ntohl(len);
+
+  // Reset the offset before sending the name string.
+  offset = 0;
+
+  // Print the name that will be sent to the server.
+  printf("[*] Name to be sent: %s\n", msg);
+
+  // Keep sending until the entire name string is sent.
+  while (offset < tbs)
+  {
+    // Send the remaining bytes of the name string.
+    sent = write(sock, msg + offset, tbs - offset);
+
+    // If some bytes were successfully sent, move the offset forward.
+    if (sent > 0)
+      offset += sent;
+  }
+
+  // 2. Bob -> Alice: length of the name (4 bytes) || name (length bytes)
+  // Receive the length information (4 bytes)
+
+  // Set the number of bytes to receive as 4 because the length field is an integer.
+  tbr = 4;
+
+  // Initialize the offset to 0 before receiving bytes.
+  offset = 0;
+
+  // Keep receiving until exactly 4 bytes of the length field are received.
+  while (offset < tbr)
+  {
+	  // Receive the remaining bytes of the length field from the socket.
+	  rcvd = read(sock, &len + offset, tbr - offset);
+
+    // If some bytes were successfully received, move the offset forward.
+    if (rcvd > 0)
+      offset += rcvd;
+  }
+
+  // Convert the received length from network byte order to host byte order.
+  len = ntohl(len);
+
+  // Print the length of the name that will be received.
+  printf("[*] Length received: %d\n", len);
+
+  // Receive the name (Bob)
+
+  // Set the number of bytes to receive as the received name length.
+  tbr = len;
+
+  // Reset the offset before receiving the name.
+  offset = 0;
+
+  // Keep receiving until the entire name string is received.
+  while (offset < tbr)
+  {
+    // Receive the remaining bytes of the name string into buf.
+    rcvd = read(sock, buf + offset, tbr - offset);
+
+    // If some bytes were successfully received, move the offset forward.
+    if (rcvd > 0)
+      offset += rcvd;
+  }
+
+  // Print the name received from the server.
+	printf("[*] Name received: %s \n", buf);
+
+  // Implement following the instructions below
+  // Let's assume there are two opcodes:
+  //     1: summation request for the two arguments
+  //     2: reply with the result
+  // 3. Alice -> Bob: opcode (4 bytes) || arg1 (4 bytes) || arg2 (4 bytes)
+  // The opcode should be 1
+
+  // p is a pointer used to write values sequentially into the buffer.
+  char *p;
+
+  // i is used as a loop variable for printing bytes.
+  // arg1 and arg2 are the two integer arguments for the summation request.
+  int i, arg1, arg2;
+
+  // Clear the buffer before writing the request data.
+  memset(buf, 0, BUFLEN);
+
+  // Set p to the beginning of the buffer.
+  p = buf;
+
+  // Set the first argument value.
+  arg1 = 2;
+
+  // Set the second argument value.
+  arg2 = 5;
+
+  // Write the summation opcode into the buffer in big-endian format.
+  VAR_TO_MEM_1BYTE_BIG_ENDIAN(OPCODE_SUM, p);
+
+  // Write arg1 into the buffer as a 4-byte big-endian integer.
+  VAR_TO_MEM_4BYTES_BIG_ENDIAN(arg1, p);
+
+  // Write arg2 into the buffer as a 4-byte big-endian integer.
+  VAR_TO_MEM_4BYTES_BIG_ENDIAN(arg2, p);
+
+  // Calculate the total number of bytes written into the buffer.
+  tbs = p - buf;
+
+  // Initialize the offset before sending the request buffer.
+  offset = 0;
+
+  // Print the total number of bytes that will be sent.
+  printf("[*] # of bytes to be sent: %d\n", tbs);
+
+  // Print a message before displaying the raw bytes.
+  printf("[*] The following bytes will be sent\n");
+
+  // Print each byte in hexadecimal format for debugging.
+  for (i=0; i<tbs; i++)
+    printf ("%02x ", buf[i]);
+
+  // Print a newline after displaying all bytes.
+  printf("\n");
+
+  // Keep sending until the entire request buffer is sent.
+  while (offset < tbs)
+  {
+    // Send the remaining bytes of the request buffer.
+    sent = write(sock, buf + offset, tbs - offset);
+
+    // If some bytes were successfully sent, move the offset forward.
+    if (sent > 0)
+      offset += sent;
+  }
+
+  // 4. Bob -> Alice: opcode (4 bytes) || result (4 bytes)
+  // The opcode should be 2
+
+  // opcode stores the reply opcode received from the server.
+  // result stores the summation result received from the server.
+  int opcode, result;
+
+  // Set the expected number of bytes to receive as 8:
+  // 4 bytes for opcode and 4 bytes for result.
+  tbr = 8;
+
+  // Reset the offset before receiving the reply.
+  offset = 0;
+
+  // Clear the buffer before receiving the reply data.
+  memset(buf, 0, BUFLEN);
+
+  // Print the number of bytes expected from the server.
+  printf("[*] # of bytes to be received: %d\n", tbr);
+
+  // Keep receiving until the expected reply bytes are received.
+  while (offset < tbr)
+  {
+    // Receive the remaining bytes of the reply buffer from the socket.
+    rcvd = read(sock, buf + offset, tbs - offset);
+
+    // If some bytes were successfully received, move the offset forward.
+    if (rcvd > 0)
+      offset += rcvd;
+  }
+
+  // Print a message before displaying the received raw bytes.
+  printf("[*] The following bytes is received\n");
+
+  // Print each received byte in hexadecimal format for debugging.
+  for (i=0; i<tbr; i++)
+    printf("%02x ", buf[i]);
+
+  // Print a newline after displaying all bytes.
+  printf("\n");
+
+  // Set p to the beginning of the received buffer for decoding.
+  p = buf;
+
+  // Read the first 4 bytes from the buffer as the reply opcode.
+  MEM_TO_VAR_4BYTES_BIG_ENDIAN(p, opcode);
+
+  // Print the decoded opcode.
+  printf("[*] Opcode: %d\n", opcode);
+
+  // Read the next 4 bytes from the buffer as the summation result.
+  MEM_TO_VAR_4BYTES_BIG_ENDIAN(p, result);
+
+  // Print the decoded result.
+  printf("[*] Result: %d\n", result);
+}
+
+void error_handling(const char *message)
+{
+	fputs(message, stderr);
+	fputc('\n', stderr);
+	exit(1);
+}
